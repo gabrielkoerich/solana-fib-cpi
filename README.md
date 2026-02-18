@@ -50,3 +50,25 @@ cargo build-sbf
 
 The compiled program is output to `target/deploy/solana-fib-cpi.so`.
 
+## Test
+
+```
+cargo test-sbf
+```
+
+Run a specific test:
+
+```
+cargo test-sbf -- fibonacci_n3
+```
+
+## Dependencies
+
+Uses only the modular Solana v2 crates — no Anchor, no monolithic `solana-program`:
+
+- `solana-account-info`
+- `solana-cpi`
+- `solana-instruction`
+- `solana-msg`
+- `solana-program-entrypoint`
+- `solana-pubkey`

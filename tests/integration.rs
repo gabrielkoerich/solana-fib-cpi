@@ -3,9 +3,10 @@ use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
     signature::Signer,
-    system_program,
     transaction::Transaction,
 };
+
+const SYSTEM_PROGRAM_ID: Pubkey = Pubkey::new_from_array([0u8; 32]);
 
 const SEED: &[u8] = b"fib";
 
@@ -25,7 +26,7 @@ fn init_ix(program_id: Pubkey, pda: Pubkey, payer: Pubkey, n: u64) -> Instructio
         accounts: vec![
             AccountMeta::new(pda, false),
             AccountMeta::new(payer, true),
-            AccountMeta::new_readonly(system_program::ID, false),
+            AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
         ],
         data: n.to_le_bytes().to_vec(),
     }
@@ -42,7 +43,7 @@ fn read_state(data: &[u8]) -> (u64, u64, u64, u8) {
 #[tokio::test]
 async fn init_n_zero() {
     let (pt, pid) = program_test();
-    let (mut banks, payer, bh) = pt.start().await;
+    let (banks, payer, bh) = pt.start().await;
 
     let (pda, bump) = Pubkey::find_program_address(&[SEED, payer.pubkey().as_ref()], &pid);
 
@@ -66,7 +67,7 @@ async fn init_n_zero() {
 #[tokio::test]
 async fn fibonacci_n1() {
     let (pt, pid) = program_test();
-    let (mut banks, payer, bh) = pt.start().await;
+    let (banks, payer, bh) = pt.start().await;
     let (pda, _) = Pubkey::find_program_address(&[SEED, payer.pubkey().as_ref()], &pid);
 
     let tx = Transaction::new_signed_with_payer(
@@ -89,7 +90,7 @@ async fn fibonacci_n1() {
 #[tokio::test]
 async fn fibonacci_n3() {
     let (pt, pid) = program_test();
-    let (mut banks, payer, bh) = pt.start().await;
+    let (banks, payer, bh) = pt.start().await;
     let (pda, _) = Pubkey::find_program_address(&[SEED, payer.pubkey().as_ref()], &pid);
 
     let tx = Transaction::new_signed_with_payer(
@@ -116,7 +117,7 @@ async fn fibonacci_n4_max_depth() {
     // CPI stack height limit = 5 (invoke depth 1 + 4 CPI levels).
     // init(h=1) -> step(h=2) -> step(h=3) -> step(h=4) -> step(h=5) = OK
     let (pt, pid) = program_test();
-    let (mut banks, payer, bh) = pt.start().await;
+    let (banks, payer, bh) = pt.start().await;
     let (pda, _) = Pubkey::find_program_address(&[SEED, payer.pubkey().as_ref()], &pid);
 
     let tx = Transaction::new_signed_with_payer(
@@ -143,7 +144,7 @@ async fn fibonacci_n4_max_depth() {
 async fn fibonacci_n5_exceeds_depth() {
     // n=5 needs 5 self-CPI calls reaching stack height 6 > limit of 5.
     let (pt, pid) = program_test();
-    let (mut banks, payer, bh) = pt.start().await;
+    let (banks, payer, bh) = pt.start().await;
     let (pda, _) = Pubkey::find_program_address(&[SEED, payer.pubkey().as_ref()], &pid);
 
     let tx = Transaction::new_signed_with_payer(
@@ -159,7 +160,7 @@ async fn fibonacci_n5_exceeds_depth() {
 #[tokio::test]
 async fn wrong_pda_fails() {
     let (pt, pid) = program_test();
-    let (mut banks, payer, bh) = pt.start().await;
+    let (banks, payer, bh) = pt.start().await;
 
     let wrong_pda = Pubkey::new_unique();
     let tx = Transaction::new_signed_with_payer(

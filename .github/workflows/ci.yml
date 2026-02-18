@@ -25,7 +25,6 @@ jobs:
       - name: Setup Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          flags: ""
           toolchain: ${{ env.RUST_VERSION }}
           cache: false
 
@@ -59,4 +58,4 @@ jobs:
         run: cargo check --locked
 
       - name: Run SBF tests
-        run: cargo test-sbf --locked
+        run: cargo test-sbf

@@ -23,6 +23,9 @@ A single instruction handles two modes based on PDA state:
 | 0 | PDA            | yes      | no     |
 | 1 | Payer          | yes      | yes    |
 | 2 | System Program | no       | no     |
+| 3 | This program   | no       | no     |
+
+The program passes itself as the last account because a CPI can only target a program that is one of the caller's instruction accounts. Recursing into itself is no exception.
 
 ### PDA data layout (25 bytes)
 
@@ -56,6 +59,8 @@ The compiled program is output to `target/deploy/solana-fib-cpi.so`.
 cargo test-sbf
 ```
 
+The tests load the built `.so`, not a native processor, and turn off `lift_cpi_caller_restriction`, a feature `solana-program-test` enables but mainnet never activated. A native run or the default feature set lets the self-CPI pass without the program account.
+
 Run a specific test:
 
 ```
@@ -72,3 +77,4 @@ Uses only the modular Solana v2 crates — no Anchor, no monolithic `solana-prog
 - `solana-msg`
 - `solana-program-entrypoint`
 - `solana-pubkey`
+- `solana-sysvar`, for the rent-exempt minimum

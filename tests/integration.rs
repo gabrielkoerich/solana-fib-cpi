@@ -12,11 +12,11 @@ const SEED: &[u8] = b"fib";
 
 fn program_test() -> (ProgramTest, Pubkey) {
     let id = Pubkey::new_unique();
-    let pt = ProgramTest::new(
-        "solana_fib_cpi",
-        id,
-        processor!(solana_fib_cpi::process_instruction),
-    );
+    // load the built .so, a native processor skips the runtime's CPI checks
+    let mut pt = ProgramTest::new("solana_fib_cpi", id, None);
+    pt.prefer_bpf(true);
+    // never activated on mainnet, there a CPI target must be one of the caller's accounts
+    pt.deactivate_feature(solana_sdk::pubkey!("HcW8ZjBezYYgvcbxNJwqv1t484Y2556qJsfNDWvJGZRH"));
     (pt, id)
 }
 
@@ -27,6 +27,7 @@ fn init_ix(program_id: Pubkey, pda: Pubkey, payer: Pubkey, n: u64) -> Instructio
             AccountMeta::new(pda, false),
             AccountMeta::new(payer, true),
             AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
+            AccountMeta::new_readonly(program_id, false),
         ],
         data: n.to_le_bytes().to_vec(),
     }

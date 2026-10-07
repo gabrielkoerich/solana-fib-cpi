@@ -4,17 +4,13 @@ use solana_instruction::{AccountMeta, Instruction};
 use solana_msg::msg;
 use solana_program_entrypoint::{entrypoint, ProgramResult};
 use solana_pubkey::Pubkey;
+use solana_sysvar::{rent::Rent, Sysvar};
 
 entrypoint!(process_instruction);
 
 const SEED: &[u8] = b"fib";
 const DATA_LEN: u64 = 25; // a(8) + b(8) + n(8) + bump(1)
 const SYSTEM_PROGRAM: Pubkey = Pubkey::new_from_array([0u8; 32]);
-
-/// Rent-exempt minimum: (128 overhead + data_len) * 3480 lamports/byte-year * 2 years
-const fn rent_minimum(data_len: u64) -> u64 {
-    (128 + data_len) * 3_480 * 2
-}
 
 /// Build a CreateAccount instruction for the system program (bincode).
 fn create_account_ix(
@@ -45,6 +41,8 @@ pub fn process_instruction(
     let pda = next_account_info(iter)?;
     let payer = next_account_info(iter)?;
     let system = next_account_info(iter)?;
+    // the runtime only resolves a CPI target that is one of the caller's accounts
+    let program = next_account_info(iter)?;
 
     if pda.data_is_empty() {
         // create PDA, store state, start recursion
@@ -61,7 +59,7 @@ pub fn process_instruction(
             &create_account_ix(
                 payer.key,
                 pda.key,
-                rent_minimum(DATA_LEN),
+                Rent::get()?.minimum_balance(DATA_LEN as usize),
                 DATA_LEN,
                 program_id,
             ),
@@ -79,7 +77,7 @@ pub fn process_instruction(
         msg!("init: a=0 b=1 n={}", n);
 
         if n > 0 {
-            self_cpi(program_id, pda, payer, system)?;
+            self_cpi(program_id, pda, payer, system, program)?;
         }
     } else {
         //  advance fibonacci, recurse if steps remain
@@ -102,7 +100,7 @@ pub fn process_instruction(
         msg!("step: a={} b={} n={}", b, new_b, n - 1);
 
         if n - 1 > 0 {
-            self_cpi(program_id, pda, payer, system)?;
+            self_cpi(program_id, pda, payer, system, program)?;
         } else {
             msg!("done: {}", new_b);
         }
@@ -118,6 +116,7 @@ fn self_cpi<'a>(
     pda: &AccountInfo<'a>,
     payer: &AccountInfo<'a>,
     system: &AccountInfo<'a>,
+    program: &AccountInfo<'a>,
 ) -> ProgramResult {
     invoke(
         &Instruction {
@@ -126,9 +125,10 @@ fn self_cpi<'a>(
                 AccountMeta::new(*pda.key, false),
                 AccountMeta::new(*payer.key, true),
                 AccountMeta::new_readonly(SYSTEM_PROGRAM, false),
+                AccountMeta::new_readonly(*program_id, false),
             ],
             data: vec![], // empty data = step mode
         },
-        &[pda.clone(), payer.clone(), system.clone()],
+        &[pda.clone(), payer.clone(), system.clone(), program.clone()],
     )
 }

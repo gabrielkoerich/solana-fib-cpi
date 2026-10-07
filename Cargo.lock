@@ -4643,6 +4643,7 @@ dependencies = [
  "solana-program-test",
  "solana-pubkey",
  "solana-sdk",
+ "solana-sysvar",
  "tokio",
 ]
 
